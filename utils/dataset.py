@@ -32,10 +32,8 @@ class VocoderDataset(Dataset) :
 
 def get_vocoder_datasets(path, batch_size, train_gta) :
 
-    with open(f'{path}dataset.pkl', 'rb') as f :
-        dataset = pickle.load(f)
-
-    dataset_ids = [x[0] for x in dataset]
+    dataset_ids = os.listdir(os.path.join(path, 'gta'))
+    dataset_ids = [id.split('.')[0] for id in dataset_ids]
 
     random.seed(1234)
     random.shuffle(dataset_ids)
