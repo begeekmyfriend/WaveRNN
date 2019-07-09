@@ -161,7 +161,7 @@ class WaveRNN(nn.Module):
         with torch.no_grad():
 
             mels = mels.cuda()
-            wave_len = (mels.size(-1) - 1) * self.hop_length
+            wave_len = mels.size(-1) * self.hop_length
             mels = self.pad_tensor(mels.transpose(1, 2), pad=self.pad, side='both')
             mels, aux = self.upsample(mels.transpose(1, 2))
 
@@ -225,17 +225,16 @@ class WaveRNN(nn.Module):
         output = output.astype(np.float64)
 
         if batched:
+            if mu_law :
+                for i, o in enumerate(output):
+                    output[i] = decode_mu_law(output[i], self.n_classes, False)
             output = self.xfade_and_unfold(output, target, overlap)
         else:
             output = output[0]
+            if mu_law :
+                output = decode_mu_law(output, self.n_classes, False)
 
-        if mu_law :
-            output = decode_mu_law(output, self.n_classes, False)
-
-        # Fade-out at the end to avoid signal cutting out suddenly
-        fade_out = np.linspace(1, 0, 20 * self.hop_length)
-        output = output[:wave_len]
-        output[-20 * self.hop_length:] *= fade_out
+        output = output[:wave_len - mels.size(0) * self.hop_length]
 
         save_wav(output, save_path)
 
@@ -352,25 +351,40 @@ class WaveRNN(nn.Module):
         '''
 
         num_folds, length = y.shape
-        target = length - 2 * overlap
-        total_len = num_folds * (target + overlap) + overlap
+        total_len = num_folds * length
+        unfolded = np.zeros(total_len)
 
         # Equal power crossfade
-        window = signal.get_window('hann', 2 * overlap)
+        window = np.hanning(2 * overlap)
         fade_in = window[:overlap]
-        fade_out = window[overlap:]
+        fade_out = window[-overlap:]
 
-        # Apply the gain to the overlap samples
-        y[:, :overlap] *= fade_in
-        y[:, -overlap:] *= fade_out
+        for i in range(1, num_folds):
+            prev = y[i-1]
+            curr = y[i]
 
-        unfolded = np.zeros((total_len), dtype=np.float64)
+            if i == 1:
+                end = length
+                unfolded[:end] += prev
 
-        # Loop to add up all the samples
-        for i in range(num_folds):
-            start = i * (target + overlap)
-            end = start + target + 2 * overlap
-            unfolded[start:end] += y[i]
+            max_idx = 0
+            max_corr = 0
+            pattern = prev[-overlap:]
+            # slide the curr batch to match with the pattern of previous one
+            for j in range(overlap):
+                match = curr[j:j + overlap]
+
+                corr = np.sum(pattern * match) / (np.sqrt(np.sum(pattern * pattern)) * np.sqrt(np.sum(match * match)) + 1e-7)
+                if corr > max_corr:
+                    max_idx = j
+                    max_corr = corr
+
+            # Apply the gain to the overlap samples
+            start = end - overlap
+            unfolded[start:end] *= fade_out
+            end = start + (length - max_idx)
+            curr[max_idx:max_idx + overlap] *= fade_in
+            unfolded[start:end] += curr[max_idx:]
 
         return unfolded
 
