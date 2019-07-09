@@ -224,15 +224,14 @@ class WaveRNN(nn.Module):
         output = output.cpu().numpy()
         output = output.astype(np.float64)
 
+        if mu_law :
+            for i, o in enumerate(output):
+                output[i] = decode_mu_law(output[i], self.n_classes, False)
+
         if batched:
-            if mu_law :
-                for i, o in enumerate(output):
-                    output[i] = decode_mu_law(output[i], self.n_classes, False)
             output = self.xfade_and_unfold(output, target, overlap)
         else:
             output = output[0]
-            if mu_law :
-                output = decode_mu_law(output, self.n_classes, False)
 
         output = output[:wave_len - mels.size(0) * self.hop_length]
 
