@@ -233,9 +233,9 @@ class WaveRNN(nn.Module):
         else:
             output = output[0]
 
-        output = output[:wave_len - mels.size(0) * self.hop_length]
+        output = output[:wave_len]
 
-        save_wav(output, save_path)
+        output = save_wav(output, save_path)
 
         self.train()
 
@@ -373,7 +373,7 @@ class WaveRNN(nn.Module):
             for j in range(overlap):
                 match = curr[j:j + overlap]
 
-                corr = np.sum(pattern * match) / (np.sqrt(np.sum(pattern * pattern)) * np.sqrt(np.sum(match * match)) + 1e-7)
+                corr = np.sum(pattern * match) / (np.sqrt(np.sum(pattern ** 2)) * np.sqrt(np.sum(match ** 2)))
                 if corr > max_corr:
                     max_idx = j
                     max_corr = corr

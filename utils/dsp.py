@@ -3,6 +3,8 @@ import numpy as np
 import librosa
 import hparams as hp
 from scipy.signal import lfilter
+from scipy.io.wavfile import write
+from pydub import AudioSegment
 
 
 def label_2_float(x, bits) :
@@ -19,7 +21,20 @@ def load_wav(path) :
 
 
 def save_wav(x, path) :
-    librosa.output.write_wav(path, x.astype(np.float32), sr=hp.sample_rate)
+    x *= 0.8 * 32768
+    wav = x.astype(np.int16)
+    audio_segment = AudioSegment(
+        wav.tobytes(),
+        frame_rate=hp.sample_rate,
+        sample_width=wav.dtype.itemsize,
+        channels=1
+    )
+
+    audio_segment = audio_segment.apply_gain(-20 - audio_segment.dBFS)
+    norm_wav = audio_segment.get_array_of_samples()
+    padding = np.zeros(hp.hop_length * 40, dtype=np.int16)
+    if path is not None: write(path, hp.sample_rate, np.array(norm_wav))
+    return np.array(norm_wav)
 
 
 def split_signal(x) :
