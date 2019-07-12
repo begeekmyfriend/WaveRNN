@@ -76,6 +76,7 @@ def collate_vocoder(batch):
 
     mels = torch.tensor(mels)
     labels = torch.tensor(labels).long()
+    mels = (mels + 5) / 10
 
     x = labels[:, :hp.voc_seq_len]
     y = labels[:, 1:]
