@@ -10,6 +10,7 @@ import argparse
 
 
 if __name__ == "__main__":
+    os.environ['CUDA_VISIBLE_DEVICES'] = '0'
     parser = argparse.ArgumentParser(description='Generate WaveRNN Samples')
     parser.add_argument('--batched', '-b', dest='batched', action='store_true', help='Fast Batched Generation')
     parser.add_argument('--unbatched', '-u', dest='batched', action='store_false', help='Slow Unbatched Generation')
@@ -66,7 +67,7 @@ if __name__ == "__main__":
     for file_name in os.listdir(args.dir):
         mel = np.load(os.path.join(args.dir, file_name))
         mel = torch.tensor(mel).unsqueeze(0)
-        mel = (mel + 5) / 10
+        mel = (mel + 6) / 10
 
         batch_str = f'gen_batched_target{target}_overlap{overlap}' if batched else 'gen_NOT_BATCHED'
         save_str = f'{file_name}__{k}k_steps_{batch_str}.wav'

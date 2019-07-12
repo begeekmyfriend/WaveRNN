@@ -25,7 +25,7 @@ class VocoderDataset(Dataset) :
         id = self.metadata[index]
         m = np.load(f'{self.mel_path}{id}.npy')
         x = np.load(f'{self.quant_path}{id}.npy')
-        return m, x
+        return (m + 6) / 10, x
 
     def __len__(self) :
         return len(self.metadata)
@@ -76,7 +76,6 @@ def collate_vocoder(batch):
 
     mels = torch.tensor(mels)
     labels = torch.tensor(labels).long()
-    mels = (mels + 5) / 10
 
     x = labels[:, :hp.voc_seq_len]
     y = labels[:, 1:]
@@ -216,17 +215,3 @@ class BinnedLengthSampler(Sampler):
 
     def __len__(self):
         return len(self.idx)
-
-
-
-
-
-
-
-
-
-
-
-
-
-

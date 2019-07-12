@@ -1,4 +1,4 @@
-import time
+import os, time
 import numpy as np
 from torch import optim
 import torch.nn.functional as F
@@ -65,7 +65,7 @@ def voc_train_loop(model, loss_func, optimiser, train_set, test_set, lr, total_s
 
 
 if __name__ == "__main__" :
-
+    os.environ['CUDA_VISIBLE_DEVICES'] = '0'
     # Parse Arguments
     parser = argparse.ArgumentParser(description='Train WaveRNN Vocoder')
     parser.add_argument('--lr', '-l', type=float,  help='[float] override hparams.py learning rate')
