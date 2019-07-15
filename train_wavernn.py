@@ -12,14 +12,17 @@ from utils.paths import Paths
 import argparse
 
 
-def voc_train_loop(model, loss_func, optimiser, train_set, test_set, lr, total_steps):
+def voc_train_loop(model, loss_func, optimizer, train_set, test_set, init_lr, total_steps):
 
-    for p in optimiser.param_groups: p['lr'] = lr
+    for p in optimizer.param_groups: p['lr'] = init_lr
 
     total_iters = len(train_set)
     epochs = (total_steps - model.get_step()) // total_iters + 1
 
     for e in range(1, epochs + 1):
+
+        lr = init_lr * (0.5 ** (model.get_step() // 400))
+        for p in optimizer.param_groups: p['lr'] = lr
 
         start = time.time()
         running_loss = 0.
@@ -40,9 +43,9 @@ def voc_train_loop(model, loss_func, optimiser, train_set, test_set, lr, total_s
 
             loss = loss_func(y_hat, y)
 
-            optimiser.zero_grad()
+            optimizer.zero_grad()
             loss.backward()
-            optimiser.step()
+            optimizer.step()
             running_loss += loss.item()
 
             speed = i / (time.time() - start)
@@ -104,7 +107,7 @@ if __name__ == "__main__" :
 
     voc_model.restore(paths.voc_latest_weights)
 
-    optimiser = optim.Adam(voc_model.parameters())
+    optimizer = optim.Adam(voc_model.parameters())
 
     train_set, test_set = get_vocoder_datasets(paths.data, batch_size, train_gta)
 
@@ -118,7 +121,7 @@ if __name__ == "__main__" :
 
     loss_func = F.cross_entropy if voc_model.mode == 'RAW' else discretized_mix_logistic_loss
 
-    voc_train_loop(voc_model, loss_func, optimiser, train_set, test_set, lr, total_steps)
+    voc_train_loop(voc_model, loss_func, optimizer, train_set, test_set, lr, total_steps)
 
     print('Training Complete.')
     print('To continue training increase voc_total_steps in hparams.py or use --force_train')
