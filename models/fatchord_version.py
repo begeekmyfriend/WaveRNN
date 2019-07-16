@@ -233,7 +233,7 @@ class WaveRNN(nn.Module):
         else:
             output = output[0]
 
-        output = output[:wave_len]
+        output = output[:round(wave_len * 0.99)]
 
         output = save_wav(output, save_path)
 
