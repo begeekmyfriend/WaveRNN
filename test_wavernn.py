@@ -67,7 +67,6 @@ if __name__ == "__main__":
     for file_name in os.listdir(args.dir):
         mel = np.load(os.path.join(args.dir, file_name))
         mel = torch.tensor(mel).unsqueeze(0)
-        mel = (mel + 6) / 10
 
         batch_str = f'gen_batched_target{target}_overlap{overlap}' if batched else 'gen_NOT_BATCHED'
         save_str = f'{file_name}__{k}k_steps_{batch_str}.wav'
