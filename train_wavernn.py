@@ -21,7 +21,7 @@ def voc_train_loop(model, loss_func, optimizer, train_set, test_set, init_lr, to
 
     for e in range(1, epochs + 1):
 
-        lr = init_lr * (0.5 ** (model.get_step() // 400))
+        lr = init_lr * (0.5 ** (model.get_step() // 400_000))
         for p in optimizer.param_groups: p['lr'] = lr
 
         start = time.time()
@@ -98,6 +98,7 @@ if __name__ == "__main__" :
                         res_blocks=hp.voc_res_blocks,
                         hop_length=hp.hop_length,
                         sample_rate=hp.sample_rate,
+                        pad_val=hp.voc_pad_val,
                         mode=hp.voc_mode).cuda()
 
     # Check to make sure the hop length is correctly factorised

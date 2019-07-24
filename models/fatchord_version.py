@@ -90,10 +90,11 @@ class UpsampleNetwork(nn.Module):
 class WaveRNN(nn.Module):
     def __init__(self, rnn_dims, fc_dims, bits, pad, upsample_factors,
                  feat_dims, compute_dims, res_out_dims, res_blocks,
-                 hop_length, sample_rate, mode='RAW'):
+                 hop_length, sample_rate, pad_val, mode='RAW'):
         super().__init__()
         self.mode = mode
         self.pad = pad
+        self.pad_val = pad_val
         if self.mode == 'RAW' :
             self.n_classes = 2 ** bits
         elif self.mode == 'MOL' :
@@ -162,7 +163,7 @@ class WaveRNN(nn.Module):
 
             mels = mels.cuda()
             wave_len = mels.size(-1) * self.hop_length
-            mels = self.pad_tensor(mels.transpose(1, 2), pad=self.pad, side='both')
+            mels = self.pad_tensor(mels.transpose(1, 2), self.pad, self.pad_val, side='both')
             mels, aux = self.upsample(mels.transpose(1, 2))
 
             if batched:
@@ -256,12 +257,12 @@ class WaveRNN(nn.Module):
         gru_cell.bias_ih.data = gru.bias_ih_l0.data
         return gru_cell
 
-    def pad_tensor(self, x, pad, side='both'):
+    def pad_tensor(self, x, pad, pad_val, side='both'):
         # NB - this is just a quick method i need right now
         # i.e., it won't generalise to other shapes/dims
         b, t, c = x.size()
         total = t + 2 * pad if side == 'both' else t + pad
-        padded = torch.zeros(b, total, c).cuda()
+        padded = torch.full_like((b, total, c), pad_val).cuda()
         if side == 'before' or side == 'both':
             padded[:, pad:pad + t, :] = x
         elif side == 'after':
@@ -305,9 +306,9 @@ class WaveRNN(nn.Module):
         if remaining != 0:
             num_folds += 1
             padding = target + 2 * overlap - remaining
-            x = self.pad_tensor(x, padding, side='after')
+            x = self.pad_tensor(x, padding, self.pad_val, side='after')
 
-        folded = torch.zeros(num_folds, target + 2 * overlap, features).cuda()
+        folded = torch.full_like((num_folds, target + 2 * overlap, features), self.pad_val).cuda()
 
         # Get the values for the folded tensor
         for i in range(num_folds):
