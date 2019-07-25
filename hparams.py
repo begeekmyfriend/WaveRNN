@@ -22,7 +22,6 @@ n_fft = 2048
 fft_bins = n_fft // 2 + 1
 num_mels = 160
 mel_bias = 1
-mel_denominator = 1
 hop_length = 275                    # 12.5ms - in line with Tacotron 2 paper
 win_length = 1100                   # 50ms - same reason as above
 fmin = 40
