@@ -40,7 +40,6 @@ def voc_train_loop(model, loss_func, optimizer, train_set, test_set, init_lr, to
 
             y = y.unsqueeze(-1)
 
-
             loss = loss_func(y_hat, y)
 
             optimizer.zero_grad()

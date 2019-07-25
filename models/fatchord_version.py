@@ -167,8 +167,8 @@ class WaveRNN(nn.Module):
             mels, aux = self.upsample(mels.transpose(1, 2))
 
             if batched:
-                mels = self.fold_with_overlap(mels, target, overlap)
-                aux = self.fold_with_overlap(aux, target, overlap)
+                mels = self.fold_with_overlap(mels, target, overlap, self.pad_val)
+                aux = self.fold_with_overlap(aux, target, overlap, self.pad_val)
 
             b_size, seq_len, _ = mels.size()
 
@@ -226,11 +226,10 @@ class WaveRNN(nn.Module):
         output = output.astype(np.float64)
 
         if mu_law :
-            for i, o in enumerate(output):
-                output[i] = decode_mu_law(output[i], self.n_classes, False)
+            output = decode_mu_law(output, self.n_classes, False)
 
         if batched:
-            output = self.xfade_and_unfold(output, target, overlap)
+            output = self.xfade_and_unfold(output, target, overlap, -1)
         else:
             output = output[0]
 
@@ -262,14 +261,14 @@ class WaveRNN(nn.Module):
         # i.e., it won't generalise to other shapes/dims
         b, t, c = x.size()
         total = t + 2 * pad if side == 'both' else t + pad
-        padded = torch.full_like((b, total, c), pad_val).cuda()
+        padded = torch.zeros(b, total, c).fill_(pad_val).cuda()
         if side == 'before' or side == 'both':
             padded[:, pad:pad + t, :] = x
         elif side == 'after':
             padded[:, :t, :] = x
         return padded
 
-    def fold_with_overlap(self, x, target, overlap):
+    def fold_with_overlap(self, x, target, overlap, pad_val):
 
         ''' Fold the tensor with overlap for quick batched inference.
             Overlap will be used for crossfading in xfade_and_unfold()
@@ -306,9 +305,9 @@ class WaveRNN(nn.Module):
         if remaining != 0:
             num_folds += 1
             padding = target + 2 * overlap - remaining
-            x = self.pad_tensor(x, padding, self.pad_val, side='after')
+            x = self.pad_tensor(x, padding, pad_val, side='after')
 
-        folded = torch.full_like((num_folds, target + 2 * overlap, features), self.pad_val).cuda()
+        folded = torch.zeros(num_folds, target + 2 * overlap, features).fill_(pad_val).cuda()
 
         # Get the values for the folded tensor
         for i in range(num_folds):
@@ -318,7 +317,7 @@ class WaveRNN(nn.Module):
 
         return folded
 
-    def xfade_and_unfold(self, y, target, overlap):
+    def xfade_and_unfold(self, y, target, overlap, pad_val):
 
         ''' Applies a crossfade and unfolds into a 1d array.
 
@@ -386,6 +385,7 @@ class WaveRNN(nn.Module):
             curr[max_idx:max_idx + overlap] *= fade_in
             unfolded[start:end] += curr[max_idx:]
 
+        unfolded[end:].fill(pad_val)
         return unfolded
 
     def get_step(self) :
