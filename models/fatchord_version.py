@@ -385,8 +385,7 @@ class WaveRNN(nn.Module):
             curr[max_idx:max_idx + overlap] *= fade_in
             unfolded[start:end] += curr[max_idx:]
 
-        unfolded[end:].fill(pad_val)
-        return unfolded
+        return unfolded[:end]
 
     def get_step(self) :
         return self.step.data.item()
