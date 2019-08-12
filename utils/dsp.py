@@ -16,12 +16,13 @@ def float_2_label(x, bits) :
     x = (x + 1.) * (2**bits - 1) / 2
     return x.clip(0, 2**bits - 1)
 
+
 def load_wav(path) :
     return librosa.load(path, sr=hp.sample_rate)[0]
 
 
 def save_wav(x, path) :
-    x *= 0.8 * 32768
+    x *= 32767
     wav = x.astype(np.int16)
     audio_segment = AudioSegment(
         wav.tobytes(),
@@ -117,4 +118,3 @@ def decode_mu_law(y, mu, from_labels=True) :
     mu = mu - 1
     x = np.sign(y) / mu * ((1 + mu) ** np.abs(y) - 1)
     return x
-
