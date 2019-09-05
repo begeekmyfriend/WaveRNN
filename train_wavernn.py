@@ -21,7 +21,7 @@ def voc_train_loop(model, loss_func, optimizer, train_set, test_set, init_lr, to
 
     for e in range(1, epochs + 1):
 
-        lr = init_lr * (0.5 ** (model.get_step() // 400_000))
+        lr = init_lr * (0.5 ** (model.get_step() // 250_000))
         for p in optimizer.param_groups: p['lr'] = lr
 
         start = time.time()
