@@ -20,7 +20,7 @@ ignore_tts = True
 sample_rate = 22050
 n_fft = 2048
 fft_bins = n_fft // 2 + 1
-num_mels = 160
+num_mels = 80
 mel_bias = 1
 hop_length = 275                    # 12.5ms - in line with Tacotron 2 paper
 win_length = 1100                   # 50ms - same reason as above
@@ -57,7 +57,7 @@ voc_seq_len = hop_length * 5        # must be a multiple of hop_length
 
 # Generating / Synthesizing
 voc_gen_batched = True              # very fast (realtime+) single utterance batched generation
-voc_target = 11_000                 # target number of samples to be generated in each batch entry
+voc_target = 5_500                 # target number of samples to be generated in each batch entry
 voc_overlap = 275                   # number of samples for crossfading between batches
 
 
