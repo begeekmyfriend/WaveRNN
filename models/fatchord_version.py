@@ -121,8 +121,8 @@ class WaveRNN(nn.Module):
     def forward(self, x, mels) :
         self.step += 1
         bsize = x.size(0)
-        h1 = torch.zeros(1, bsize, self.rnn_dims).cuda()
-        h2 = torch.zeros(1, bsize, self.rnn_dims).cuda()
+        h1 = torch.zeros(1).cuda().repeat(1, bsize, self.rnn_dims)
+        h2 = torch.zeros(1).cuda().repeat(1, bsize, self.rnn_dims)
         mels, aux = self.upsample(mels)
 
         aux_idx = [self.aux_dims * i for i in range(5)]
@@ -172,9 +172,9 @@ class WaveRNN(nn.Module):
 
             b_size, seq_len, _ = mels.size()
 
-            h1 = torch.zeros(b_size, self.rnn_dims).cuda()
-            h2 = torch.zeros(b_size, self.rnn_dims).cuda()
-            x = torch.zeros(b_size, 1).cuda()
+            h1 = torch.zeros(1).cuda().repeat(b_size, self.rnn_dims)
+            h2 = torch.zeros(1).cuda().repeat(b_size, self.rnn_dims)
+            x = torch.zeros(1).cuda().repeat(b_size, 1)
 
             d = self.aux_dims
             aux_split = [aux[:, :, d * i:d * (i + 1)] for i in range(4)]
@@ -261,7 +261,7 @@ class WaveRNN(nn.Module):
         # i.e., it won't generalise to other shapes/dims
         b, t, c = x.size()
         total = t + 2 * pad if side == 'both' else t + pad
-        padded = torch.zeros(b, total, c).fill_(pad_val).cuda()
+        padded = torch.zeros(1).fill_(pad_val).cuda().repeat(b, total, c)
         if side == 'before' or side == 'both':
             padded[:, pad:pad + t, :] = x
         elif side == 'after':
@@ -307,7 +307,7 @@ class WaveRNN(nn.Module):
             padding = target + 2 * overlap - remaining
             x = self.pad_tensor(x, padding, pad_val, side='after')
 
-        folded = torch.zeros(num_folds, target + 2 * overlap, features).fill_(pad_val).cuda()
+        folded = torch.zeros(1).fill_(pad_val).cuda().repeat(num_folds, target + 2 * overlap, features)
 
         # Get the values for the folded tensor
         for i in range(num_folds):
