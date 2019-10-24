@@ -50,6 +50,7 @@ if __name__ == "__main__":
                     res_blocks=hp.voc_res_blocks,
                     hop_length=hp.hop_length,
                     sample_rate=hp.sample_rate,
+                    pad_val=hp.voc_pad_val,
                     mode=hp.voc_mode).cuda()
 
     paths = Paths(hp.data_path, hp.voc_model_id, hp.tts_model_id)
