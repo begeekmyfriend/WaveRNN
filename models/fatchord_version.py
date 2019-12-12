@@ -121,8 +121,6 @@ class WaveRNN(nn.Module):
     def forward(self, x, mels) :
         self.step += 1
         bsize = x.size(0)
-        h1 = torch.zeros(1).cuda().repeat(1, bsize, self.rnn_dims)
-        h2 = torch.zeros(1).cuda().repeat(1, bsize, self.rnn_dims)
         mels, aux = self.upsample(mels)
 
         aux_idx = [self.aux_dims * i for i in range(5)]
@@ -134,12 +132,12 @@ class WaveRNN(nn.Module):
         x = torch.cat([x.unsqueeze(-1), mels, a1], dim=2)
         x = self.I(x)
         res = x
-        x, _ = self.rnn1(x, h1)
+        x, _ = self.rnn1(x)
 
         x = x + res
         res = x
         x = torch.cat([x, a2], dim=2)
-        x, _ = self.rnn2(x, h2)
+        x, _ = self.rnn2(x)
 
         x = x + res
         x = torch.cat([x, a3], dim=2)
@@ -183,8 +181,7 @@ class WaveRNN(nn.Module):
 
                 m_t = mels[:, i, :]
 
-                a1_t, a2_t, a3_t, a4_t = \
-                    (a[:, i, :] for a in aux_split)
+                a1_t, a2_t, a3_t, a4_t = (a[:, i, :] for a in aux_split)
 
                 x = torch.cat([x, m_t, a1_t], dim=1)
                 x = self.I(x)
