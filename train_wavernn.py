@@ -1,7 +1,9 @@
+import math 
 import os, time
 import numpy as np
 from torch import optim
-import torch.nn.functional as F
+import torch
+from utils.dsp import label_2_float
 from utils.display import stream, simple_table
 from utils.dataset import get_vocoder_datasets
 from utils.distribution import discretized_mix_logistic_loss
@@ -9,20 +11,36 @@ import hparams as hp
 from models.fatchord_version import WaveRNN
 from gen_wavernn import gen_testset
 from utils.paths import Paths
+from apex import amp
 import argparse
 
 
-def voc_train_loop(model, loss_func, optimizer, train_set, test_set, init_lr, total_steps):
+def cosine_decay(init_val, final_val, step, decay_steps):
+    alpha = final_val / init_val
+    cosine_decay = 0.5 * (1 + math.cos(math.pi * step / decay_steps))
+    decayed = (1 - alpha) * cosine_decay + alpha
+    return init_val * decayed
 
-    for p in optimizer.param_groups: p['lr'] = init_lr
+
+def adjust_learning_rate(optimizer, epoch, epochs, init_lr, final_lr):
+    lr = cosine_decay(init_lr, final_lr, epoch, epochs)
+    for param_group in optimizer.param_groups:
+        param_group['lr'] = lr
+
+
+def voc_train_loop(model, loss_func, optimizer, train_set, test_set, init_lr, final_lr, total_steps):
 
     total_iters = len(train_set)
-    epochs = (total_steps - model.get_step()) // total_iters + 1
+    epochs = int((total_steps - model.get_step()) // total_iters + 1)
+
+    if hp.amp:
+        model, optimizer = amp.initialize(model, optimizer, opt_level="O1")
+
+    torch.backends.cudnn.benchmark = True
 
     for e in range(1, epochs + 1):
 
-        lr = init_lr * (0.5 ** (model.get_step() // 250_000))
-        for p in optimizer.param_groups: p['lr'] = lr
+        adjust_learning_rate(optimizer, e, epochs, init_lr, final_lr)
 
         start = time.time()
         running_loss = 0.
@@ -43,7 +61,15 @@ def voc_train_loop(model, loss_func, optimizer, train_set, test_set, init_lr, to
             loss = loss_func(y_hat, y)
 
             optimizer.zero_grad()
-            loss.backward()
+
+            if hp.amp:
+                with amp.scale_loss(loss, optimizer) as scaled_loss:
+                    scaled_loss.backward()
+                grad_norm = torch.nn.utils.clip_grad_norm_(amp.master_params(optimizer), 1)
+            else:
+                loss.backward()
+                grad_norm = torch.nn.utils.clip_grad_norm_(model.parameters(), 1)
+
             optimizer.step()
             running_loss += loss.item()
 
@@ -70,20 +96,23 @@ if __name__ == "__main__" :
     os.environ['CUDA_VISIBLE_DEVICES'] = '0'
     # Parse Arguments
     parser = argparse.ArgumentParser(description='Train WaveRNN Vocoder')
-    parser.add_argument('--lr', '-l', type=float,  help='[float] override hparams.py learning rate')
+    parser.add_argument('--init_lr', '-il', type=float,  help='[float] override hparams.py learning rate')
+    parser.add_argument('--final_lr', '-fl', type=float,  help='[float] override hparams.py learning rate')
     parser.add_argument('--batch_size', '-b', type=int, help='[int] override hparams.py batch size')
     parser.add_argument('--force_train', '-f', action='store_true', help='Forces the model to train past total steps')
     parser.add_argument('--gta', '-g', action='store_true', help='train wavernn on GTA features')
-    parser.set_defaults(lr=hp.voc_lr)
+    parser.set_defaults(init_lr=hp.voc_init_lr)
+    parser.set_defaults(final_lr=hp.voc_final_lr)
     parser.set_defaults(batch_size=hp.voc_batch_size)
     args = parser.parse_args()
 
     batch_size = args.batch_size
     force_train = args.force_train
     train_gta = args.gta
-    lr = args.lr
+    init_lr = args.init_lr
+    final_lr = args.final_lr
 
-    print('\nInitialising Model...\n')
+    print('\nInitializing Model...\n')
 
     # Instantiate WaveRNN Model
     voc_model = WaveRNN(rnn_dims=hp.voc_rnn_dims,
@@ -115,13 +144,14 @@ if __name__ == "__main__" :
 
     simple_table([('Remaining', str((total_steps - voc_model.get_step())//1000) + 'k Steps'),
                   ('Batch Size', batch_size),
-                  ('LR', lr),
+                  ('Initial learning rate', init_lr),
+                  ('Final learnging rate', final_lr),
                   ('Sequence Len', hp.voc_seq_len),
                   ('GTA Train', train_gta)])
 
-    loss_func = F.cross_entropy if voc_model.mode == 'RAW' else discretized_mix_logistic_loss
+    loss_func = torch.nn.functional.cross_entropy if voc_model.mode == 'RAW' else discretized_mix_logistic_loss
 
-    voc_train_loop(voc_model, loss_func, optimizer, train_set, test_set, lr, total_steps)
+    voc_train_loop(voc_model, loss_func, optimizer, train_set, test_set, init_lr, final_lr, total_steps)
 
     print('Training Complete.')
     print('To continue training increase voc_total_steps in hparams.py or use --force_train')

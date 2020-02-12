@@ -22,7 +22,7 @@ def load_wav(path) :
 
 
 def save_wav(x, path) :
-    x *= 32767
+    x *= 0.8 * 32768
     wav = x.astype(np.int16)
     audio_segment = AudioSegment(
         wav.tobytes(),

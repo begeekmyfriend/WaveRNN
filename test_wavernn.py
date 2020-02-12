@@ -58,6 +58,8 @@ if __name__ == "__main__":
     restore_path = args.weights if args.weights else paths.voc_latest_weights
 
     model.restore(restore_path)
+    model.eval()
+    model, _ = amp.initialize(model, [], opt_level="O3")
 
     simple_table([('Generation Mode', 'Batched' if batched else 'Unbatched'),
                   ('Target Samples', target if batched else 'N/A'),

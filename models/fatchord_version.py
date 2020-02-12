@@ -93,6 +93,7 @@ class WaveRNN(nn.Module):
                  hop_length, sample_rate, pad_val, mode='RAW'):
         super().__init__()
         self.mode = mode
+        self.bits = bits
         self.pad = pad
         self.pad_val = pad_val
         if self.mode == 'RAW' :
@@ -115,7 +116,7 @@ class WaveRNN(nn.Module):
         self.fc2 = nn.Linear(fc_dims + self.aux_dims, fc_dims)
         self.fc3 = nn.Linear(fc_dims, self.n_classes)
 
-        self.step = nn.Parameter(torch.zeros(1).long(), requires_grad=False)
+        self.step = nn.Parameter(torch.zeros(1), requires_grad=False)
         self.num_params()
 
     def forward(self, x, mels) :
@@ -149,10 +150,9 @@ class WaveRNN(nn.Module):
 
     def generate(self, mels, save_path, batched, target, overlap, mu_law):
 
+        output = []
         mu_law = mu_law if self.mode == 'RAW' else False
 
-        self.eval()
-        output = []
         start = time.time()
         rnn1 = self.get_gru_cell(self.rnn1)
         rnn2 = self.get_gru_cell(self.rnn2)
@@ -170,9 +170,9 @@ class WaveRNN(nn.Module):
 
             b_size, seq_len, _ = mels.size()
 
-            h1 = torch.zeros(1).cuda().repeat(b_size, self.rnn_dims)
-            h2 = torch.zeros(1).cuda().repeat(b_size, self.rnn_dims)
-            x = torch.zeros(1).cuda().repeat(b_size, 1)
+            h1 = torch.zeros(b_size, self.rnn_dims).cuda()
+            h2 = torch.zeros(b_size, self.rnn_dims).cuda()
+            x = torch.zeros(b_size, 1).cuda()
 
             d = self.aux_dims
             aux_split = [aux[:, :, d * i:d * (i + 1)] for i in range(4)]
@@ -224,19 +224,15 @@ class WaveRNN(nn.Module):
 
         if mu_law :
             output = decode_mu_law(output, self.n_classes, False)
+        else:
+            output = label_2_float(output, self.bits)
 
         if batched:
             output = self.xfade_and_unfold(output, target, overlap, -1)
         else:
             output = output[0]
 
-        output = output[:wave_len]
-
-        output = save_wav(output, save_path)
-
-        self.train()
-
-        return output
+        return save_wav(output[:wave_len], save_path)
 
 
     def gen_display(self, i, seq_len, b_size, start):
@@ -258,7 +254,7 @@ class WaveRNN(nn.Module):
         # i.e., it won't generalise to other shapes/dims
         b, t, c = x.size()
         total = t + 2 * pad if side == 'both' else t + pad
-        padded = torch.zeros(1).fill_(pad_val).cuda().repeat(b, total, c)
+        padded = torch.zeros(b, total, c).fill_(pad_val).cuda()
         if side == 'before' or side == 'both':
             padded[:, pad:pad + t, :] = x
         elif side == 'after':
@@ -304,7 +300,7 @@ class WaveRNN(nn.Module):
             padding = target + 2 * overlap - remaining
             x = self.pad_tensor(x, padding, pad_val, side='after')
 
-        folded = torch.zeros(1).fill_(pad_val).cuda().repeat(num_folds, target + 2 * overlap, features)
+        folded = torch.zeros(num_folds, target + 2 * overlap, features).fill_(pad_val).cuda()
 
         # Get the values for the folded tensor
         for i in range(num_folds):
@@ -385,7 +381,7 @@ class WaveRNN(nn.Module):
         return unfolded[:end]
 
     def get_step(self) :
-        return self.step.data.item()
+        return int(self.step.data.item())
 
     def checkpoint(self, path) :
         k_steps = self.get_step() // 1000

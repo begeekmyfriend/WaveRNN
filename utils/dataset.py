@@ -20,7 +20,6 @@ class VocoderDataset(Dataset) :
         self.mel_path = f'{path}gta/' if train_gta else f'{path}mel/'
         self.quant_path = f'{path}quant/'
 
-
     def __getitem__(self, index) :
         id = self.metadata[index]
         m = np.load(f'{self.mel_path}{id}.npy')
@@ -33,7 +32,7 @@ class VocoderDataset(Dataset) :
 
 def get_vocoder_datasets(path, batch_size, train_gta) :
 
-    dataset_ids = os.listdir(os.path.join(path, 'gta'))
+    dataset_ids = os.listdir(os.path.join(path, 'gta' if train_gta else 'mel'))
     dataset_ids = [id.split('.')[0] for id in dataset_ids]
 
     random.seed(1234)
