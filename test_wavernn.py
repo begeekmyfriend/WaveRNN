@@ -1,3 +1,4 @@
+from apex import amp
 from utils.dataset import get_vocoder_datasets
 from utils.dsp import *
 from models.fatchord_version import WaveRNN
@@ -17,7 +18,7 @@ if __name__ == "__main__":
     parser.add_argument('--samples', '-s', type=int, help='[int] number of utterances to generate')
     parser.add_argument('--target', '-t', type=int, help='[int] number of samples in each batch index')
     parser.add_argument('--overlap', '-o', type=int, help='[int] number of crossover samples')
-    parser.add_argument('--dir', '-d', type=str, default='tacotron_output/eval', help='[string/path] for testing a wav outside dataset')
+    parser.add_argument('--dir', '-d', type=str, default='.', help='[string/path] for testing a wav outside dataset')
     parser.add_argument('--weights', '-w', type=str, help='[string/path] checkpoint file to load weights from')
     parser.add_argument('--gta', '-g', dest='use_gta', action='store_true', help='Generate from GTA testset')
 
@@ -36,8 +37,6 @@ if __name__ == "__main__":
     target = args.target
     overlap = args.overlap
     gta = args.gta
-
-    print('\nInitialising Model...\n')
 
     model = WaveRNN(rnn_dims=hp.voc_rnn_dims,
                     fc_dims=hp.voc_fc_dims,
@@ -59,7 +58,8 @@ if __name__ == "__main__":
 
     model.restore(restore_path)
     model.eval()
-    model, _ = amp.initialize(model, [], opt_level="O3")
+    if hp.amp:
+        model, _ = amp.initialize(model, [], opt_level=hp.amp_level)
 
     simple_table([('Generation Mode', 'Batched' if batched else 'Unbatched'),
                   ('Target Samples', target if batched else 'N/A'),
@@ -68,13 +68,11 @@ if __name__ == "__main__":
     k = model.get_step() // 1000
 
     for file_name in os.listdir(args.dir):
-        mel = np.load(os.path.join(args.dir, file_name))
-        mel = torch.tensor(mel).unsqueeze(0)
-        mel += hp.mel_bias
+        if file_name.endswith('.npy'):
+            mel = np.load(os.path.join(args.dir, file_name))
+            mel = torch.tensor(mel).unsqueeze(0)
 
-        batch_str = f'gen_batched_target{target}_overlap{overlap}' if batched else 'gen_NOT_BATCHED'
-        save_str = f'{file_name}__{k}k_steps_{batch_str}.wav'
+            batch_str = f'gen_batched_target{target}_overlap{overlap}' if batched else 'gen_NOT_BATCHED'
+            save_str = f'{file_name}__{k}k_steps_{batch_str}.wav'
 
-        model.generate(mel, save_str, batched, target, overlap, hp.mu_law)
-
-    print('\n\nExiting...\n')
+            model.generate(mel, save_str, batched, target, overlap, hp.mu_law)

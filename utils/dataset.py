@@ -24,7 +24,7 @@ class VocoderDataset(Dataset) :
         id = self.metadata[index]
         m = np.load(f'{self.mel_path}{id}.npy')
         x = np.load(f'{self.quant_path}{id}.npy')
-        return m + hp.mel_bias, x
+        return m, x
 
     def __len__(self) :
         return len(self.metadata)

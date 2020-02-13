@@ -1,2 +1,8 @@
+.out
+.pyc
+.npy
+.wav
 .idea
 __pycache__
+checkpoints
+model_outputs

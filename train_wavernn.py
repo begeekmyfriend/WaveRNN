@@ -34,7 +34,7 @@ def voc_train_loop(model, loss_func, optimizer, train_set, test_set, init_lr, fi
     epochs = int((total_steps - model.get_step()) // total_iters + 1)
 
     if hp.amp:
-        model, optimizer = amp.initialize(model, optimizer, opt_level="O1")
+        model, optimizer = amp.initialize(model, optimizer, opt_level=hp.amp_level)
 
     torch.backends.cudnn.benchmark = True
 
@@ -80,16 +80,17 @@ def voc_train_loop(model, loss_func, optimizer, train_set, test_set, init_lr, fi
             k = step // 1000
 
             if step % hp.voc_checkpoint_every == 0 :
+                model.eval()
                 gen_testset(model, test_set, hp.voc_gen_at_checkpoint, hp.voc_gen_batched,
                             hp.voc_target, hp.voc_overlap, paths.voc_output)
                 model.checkpoint(paths.voc_checkpoints)
+                model.train()
 
             msg = f'| Epoch: {e}/{epochs} ({i}/{total_iters}) | Loss: {avg_loss:.4f} | {speed:.1f} steps/s | Step: {k}k | '
             stream(msg)
 
         model.save(paths.voc_latest_weights)
         model.log(paths.voc_log, msg)
-        print(' ')
 
 
 if __name__ == "__main__" :
@@ -111,8 +112,6 @@ if __name__ == "__main__" :
     train_gta = args.gta
     init_lr = args.init_lr
     final_lr = args.final_lr
-
-    print('\nInitializing Model...\n')
 
     # Instantiate WaveRNN Model
     voc_model = WaveRNN(rnn_dims=hp.voc_rnn_dims,

@@ -3,7 +3,7 @@
 
 # Here are the input and output data paths (Note: you can override wav_path in preprocess.py)
 wav_path = '/path/to/wav_files/'
-data_path = '/mnt/sdb1/leoma/'
+data_path = 'data'
 
 # model ids are separate - that way you can use a new tts with an old wavernn and vice versa
 # NB: expect undefined behaviour if models were trained on different DSP settings
@@ -13,6 +13,7 @@ tts_model_id = 'voc_lsa_smooth_attention'
 # set this to True if you are only interested in WaveRNN
 ignore_tts = True
 amp = True
+amp_level = 'O1'
 
 
 # DSP --------------------------------------------------------------------------------------------------------------#
@@ -22,7 +23,6 @@ sample_rate = 22050
 n_fft = 1024
 fft_bins = n_fft // 2 + 1
 num_mels = 80
-mel_bias = 0
 hop_length = 256                    # 12.5ms - in line with Tacotron 2 paper
 win_length = 1024                   # 50ms - same reason as above
 fmin = 50
@@ -54,7 +54,7 @@ voc_gen_at_checkpoint = 5           # number of samples to generate at each chec
 voc_total_steps = 1_000_000         # Total number of training steps
 voc_test_samples = 50               # How many unseen samples to put aside for testing
 voc_pad = 2                         # this will pad the input so that the resnet can 'see' wider than input length
-voc_pad_val = -5                    # this is the minimum of mel features
+voc_pad_val = -10                   # this is the minimum of mel features
 voc_seq_len = hop_length * 5        # must be a multiple of hop_length
 
 # Generating / Synthesizing
@@ -95,4 +95,3 @@ tts_checkpoint_every = 2_000        # checkpoints the model every X steps
 
 
 # ------------------------------------------------------------------------------------------------------------------#
-

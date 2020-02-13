@@ -95,6 +95,7 @@ class WaveRNN(nn.Module):
         self.mode = mode
         self.bits = bits
         self.pad = pad
+        self.step = 0
         self.pad_val = pad_val
         if self.mode == 'RAW' :
             self.n_classes = 2 ** bits
@@ -116,7 +117,6 @@ class WaveRNN(nn.Module):
         self.fc2 = nn.Linear(fc_dims + self.aux_dims, fc_dims)
         self.fc3 = nn.Linear(fc_dims, self.n_classes)
 
-        self.step = nn.Parameter(torch.zeros(1), requires_grad=False)
         self.num_params()
 
     def forward(self, x, mels) :
@@ -205,11 +205,10 @@ class WaveRNN(nn.Module):
                     output.append(sample.view(-1))
                     # x = torch.FloatTensor([[sample]]).cuda()
                     x = sample.transpose(0, 1).cuda()
-
                 elif self.mode == 'RAW' :
                     posterior = F.softmax(logits, dim=1)
                     distrib = torch.distributions.Categorical(posterior)
-
+                    # label -> float
                     sample = 2 * distrib.sample().float() / (self.n_classes - 1.) - 1.
                     output.append(sample)
                     x = sample.unsqueeze(-1)
@@ -217,6 +216,7 @@ class WaveRNN(nn.Module):
                     raise RuntimeError("Unknown model mode value - ", self.mode)
 
                 if i % 100 == 0 : self.gen_display(i, seq_len, b_size, start)
+            print('')
 
         output = torch.stack(output).transpose(0, 1)
         output = output.cpu().numpy()
@@ -224,8 +224,6 @@ class WaveRNN(nn.Module):
 
         if mu_law :
             output = decode_mu_law(output, self.n_classes, False)
-        else:
-            output = label_2_float(output, self.bits)
 
         if batched:
             output = self.xfade_and_unfold(output, target, overlap, -1)
@@ -351,6 +349,7 @@ class WaveRNN(nn.Module):
         fade_in = window[:overlap]
         fade_out = window[-overlap:]
 
+        end = total_len
         for i in range(1, num_folds):
             prev = y[i-1]
             curr = y[i]
@@ -381,7 +380,7 @@ class WaveRNN(nn.Module):
         return unfolded[:end]
 
     def get_step(self) :
-        return int(self.step.data.item())
+        return self.step
 
     def checkpoint(self, path) :
         k_steps = self.get_step() // 1000
@@ -400,10 +399,12 @@ class WaveRNN(nn.Module):
             self.load(path)
 
     def load(self, path) :
-        self.load_state_dict(torch.load(path), strict=False)
+        checkpoint = torch.load(path)
+        self.step = checkpoint['step']
+        self.load_state_dict(checkpoint['model'], strict=False)
 
     def save(self, path) :
-        torch.save(self.state_dict(), path)
+        torch.save({'step': self.step, 'model': self.state_dict()}, path)
 
     def num_params(self, print_out=True):
         parameters = filter(lambda p: p.requires_grad, self.parameters())
