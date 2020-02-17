@@ -1,18 +1,17 @@
-import math 
-import os, time
-import numpy as np
-from torch import optim
-import torch
-from utils.dsp import label_2_float
-from utils.display import stream, simple_table
-from utils.dataset import get_vocoder_datasets
-from utils.distribution import discretized_mix_logistic_loss
-import hparams as hp
-from models.fatchord_version import WaveRNN
-from gen_wavernn import gen_testset
-from utils.paths import Paths
-from apex import amp
 import argparse
+import hparams as hp
+import math 
+import numpy as np
+import os
+import time
+import torch
+from apex import amp
+from gen_wavernn import gen_testset
+from models.fatchord_version import WaveRNN
+from utils.dataset import get_vocoder_datasets
+from utils.display import stream, simple_table
+from utils.distribution import discretized_mix_logistic_loss
+from utils.paths import Paths
 
 
 def cosine_decay(init_val, final_val, step, decay_steps):
@@ -135,7 +134,7 @@ if __name__ == "__main__" :
 
     voc_model.restore(paths.voc_latest_weights)
 
-    optimizer = optim.Adam(voc_model.parameters())
+    optimizer = torch.optim.Adam(voc_model.parameters())
 
     train_set, test_set = get_vocoder_datasets(paths.data, batch_size, train_gta)
 
