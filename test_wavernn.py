@@ -59,7 +59,7 @@ if __name__ == "__main__":
     model.restore(restore_path)
     model.eval()
     if hp.amp:
-        model, _ = amp.initialize(model, [], opt_level=hp.amp_level)
+        model, _ = amp.initialize(model, [], opt_level='O3')
 
     simple_table([('Generation Mode', 'Batched' if batched else 'Unbatched'),
                   ('Target Samples', target if batched else 'N/A'),

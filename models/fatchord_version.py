@@ -215,7 +215,6 @@ class WaveRNN(nn.Module):
                     raise RuntimeError("Unknown model mode value - ", self.mode)
 
                 if i % 100 == 0 : self.gen_display(i, seq_len, b_size, start)
-            print('')
 
         output = torch.stack(output).transpose(0, 1)
         output = output.cpu().numpy()
@@ -229,6 +228,8 @@ class WaveRNN(nn.Module):
         else:
             output = output[0]
 
+        end = time.time()
+        print(f'{end - start}')
         return save_wav(output[:wave_len], save_path)
 
 
