@@ -67,8 +67,11 @@ def collate_vocoder(batch):
     sig_offsets = [(offset + hp.voc_pad) * hp.hop_length for offset in mel_offsets]
 
     mels = [x[0][:, mel_offsets[i]:mel_offsets[i] + mel_win] for i, x in enumerate(batch)]
-
     labels = [x[1][sig_offsets[i]:sig_offsets[i] + hp.voc_seq_len + 1] for i, x in enumerate(batch)]
+
+    bits = 16 if hp.voc_mode == 'MOL' else hp.bits
+    if hp.mu_law :
+        labels = encode_mu_law(labels, 2 ** bits)
 
     mels = np.stack(mels).astype(np.float32)
     labels = np.stack(labels).astype(np.int64)
@@ -78,8 +81,6 @@ def collate_vocoder(batch):
 
     x = labels[:, :hp.voc_seq_len]
     y = labels[:, 1:]
-
-    bits = 16 if hp.voc_mode == 'MOL' else hp.bits
 
     x = label_2_float(x.float(), bits)
 
