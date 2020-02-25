@@ -33,7 +33,7 @@ def voc_train_loop(model, loss_func, optimizer, train_set, test_set, init_lr, fi
     epochs = int((total_steps - model.get_step()) // total_iters + 1)
 
     if hp.amp:
-        model, optimizer = amp.initialize(model, optimizer, opt_level=hp.amp_level)
+        model, optimizer = amp.initialize(model, optimizer, opt_level='O1')
 
     torch.backends.cudnn.benchmark = True
 

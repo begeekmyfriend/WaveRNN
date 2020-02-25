@@ -12,7 +12,6 @@ tts_model_id = 'voc_lsa_smooth_attention'
 # set this to True if you are only interested in WaveRNN
 ignore_tts = True
 amp = True
-amp_level = 'O2'
 
 
 # DSP --------------------------------------------------------------------------------------------------------------#

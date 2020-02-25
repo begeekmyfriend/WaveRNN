@@ -229,7 +229,7 @@ class WaveRNN(nn.Module):
             output = output[0]
 
         end = time.time()
-        print(f'{end - start}')
+        print(f'Elapsed {end - start} seconds')
         return save_wav(output[:wave_len], save_path)
 
 
