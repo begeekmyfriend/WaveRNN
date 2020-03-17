@@ -15,7 +15,7 @@ from utils.text import text_to_sequence
 
 
 class VocoderDataset(Dataset) :
-    def __init__(self, ids, path, train_gta=False) :
+    def __init__(self, ids, path, train_gta=True) :
         self.metadata = ids
         self.mel_path = f'{path}gta/' if train_gta else f'{path}mel/'
         self.quant_path = f'{path}quant/'
@@ -69,12 +69,14 @@ def collate_vocoder(batch):
     mels = [x[0][:, mel_offsets[i]:mel_offsets[i] + mel_win] for i, x in enumerate(batch)]
     labels = [x[1][sig_offsets[i]:sig_offsets[i] + hp.voc_seq_len + 1] for i, x in enumerate(batch)]
 
+    mels = np.stack(mels)
+    labels = np.stack(labels)
+
     bits = 16 if hp.voc_mode == 'MOL' else hp.bits
     if hp.mu_law :
         labels = encode_mu_law(labels, 2 ** bits)
-
-    mels = np.stack(mels).astype(np.float32)
-    labels = np.stack(labels).astype(np.int64)
+    else:
+        labels = float_2_label(labels, bits)
 
     mels = torch.tensor(mels)
     labels = torch.tensor(labels).long()
